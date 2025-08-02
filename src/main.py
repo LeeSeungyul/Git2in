@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import structlog
+import logging
 
 from src.config.settings import settings
 
@@ -45,7 +46,7 @@ async def startup_event():
     logger.info("Starting Git2in application", 
                 app_name=settings.app_name,
                 debug=settings.debug,
-                log_level=settings.log_level)
+                log_level=logging.getLevelName(settings.log_level))
     
     # Ensure repository directory exists
     settings.repos_path.mkdir(parents=True, exist_ok=True)
@@ -81,5 +82,5 @@ if __name__ == "__main__":
         host=settings.host,
         port=settings.port,
         reload=settings.debug,
-        log_level=settings.log_level.lower()
+        log_level=logging.getLevelName(settings.log_level).lower()
     )

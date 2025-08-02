@@ -1,7 +1,8 @@
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, validator
 from typing import Optional
 from pathlib import Path
+import logging
 
 class Settings(BaseSettings):
     """Application settings with validation"""
@@ -52,6 +53,19 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+    
+    @validator('log_level')
+    def validate_log_level(cls, v):
+        """Map string log levels to logging constants"""
+        log_level_map = {
+            'DEBUG': logging.DEBUG,
+            'INFO': logging.INFO,
+            'WARNING': logging.WARNING,
+            'ERROR': logging.ERROR,
+            'CRITICAL': logging.CRITICAL
+        }
+        # Return the mapped level or default to INFO if invalid
+        return log_level_map.get(v.upper(), logging.INFO)
 
 # Global settings instance
 settings = Settings()
