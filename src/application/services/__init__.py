@@ -1,16 +1,17 @@
-"""Git2in Application Layer.
+"""Application services.
 
-The application layer orchestrates business operations by combining Core business
-logic with Infrastructure services, managing transactions, and providing a clean
-interface for the API layer.
+This module contains services that orchestrate business operations
+by combining Core and Infrastructure components.
 """
 
+from src.application.services.base import ServiceBase
 from src.application.services.user_service import UserService
 from src.application.services.auth_service import AuthService
 from src.application.services.repository_service import RepositoryService
 from src.application.services.git_service import GitService
 
 __all__ = [
+    "ServiceBase",
     "UserService",
     "AuthService",
     "RepositoryService",

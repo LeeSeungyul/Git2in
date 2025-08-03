@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
-import jwt
+from jose import jwt
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -63,26 +63,17 @@ class TokenValidator:
                 expires_at=expires_at
             )
             
-        except (jwt.InvalidTokenError, ValueError, KeyError):
+        except (jwt.JWTError, ValueError, KeyError):
             return None
     
-    def is_token_expired(self, token: str) -> bool:
+    def is_token_expired(self, token_payload: TokenPayload) -> bool:
         """
-        Check if token is expired without full validation
+        Check if token is expired
         
         Args:
-            token: The token to check
+            token_payload: The validated token payload
             
         Returns:
-            True if expired or invalid
+            True if expired
         """
-        try:
-            # Decode without verification for performance
-            payload = jwt.decode(
-                token,
-                options={"verify_signature": False}
-            )
-            exp = datetime.fromtimestamp(payload.get("exp"), timezone.utc)
-            return exp <= datetime.now(timezone.utc)
-        except Exception:
-            return True
+        return token_payload.expires_at <= datetime.now(timezone.utc)
