@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: git2in-repository-pvc
+  namespace: git2in
+  labels:
+    app: git2in
+    component: storage
+spec:
+  accessModes:
+    - ReadWriteMany  # Allow multiple pods to mount
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard  # Will be overridden per environment
+  volumeMode: Filesystem
+---
+# Storage class for production with SSD
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: git2in-ssd
+  labels:
+    app: git2in
+    component: storage
+provisioner: kubernetes.io/aws-ebs  # Example for AWS
+parameters:
+  type: gp3
+  iopsPerGB: "10"
+  fsType: ext4
+  encrypted: "true"
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+---
+# VolumeSnapshot for backup (requires CSI driver with snapshot support)
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: git2in-snapshot
+  labels:
+    app: git2in
+    component: backup
+driver: ebs.csi.aws.com  # Example for AWS EBS CSI driver
+deletionPolicy: Retain
+parameters:
+  incremental: "true"
+---
+# Backup CronJob using VolumeSnapshot
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: git2in-backup
+  namespace: git2in
+  labels:
+    app: git2in
+    component: backup
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: git2in
+            component: backup
+        spec:
+          serviceAccountName: git2in-backup
+          containers:
+          - name: backup
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+              SNAPSHOT_NAME="git2in-snapshot-${TIMESTAMP}"
+              
+              echo "Creating volume snapshot: ${SNAPSHOT_NAME}"
+              
+              cat <<EOF | kubectl apply -f -
+              apiVersion: snapshot.storage.k8s.io/v1
+              kind: VolumeSnapshot
+              metadata:
+                name: ${SNAPSHOT_NAME}
+                namespace: git2in
+                labels:
+                  app: git2in
+                  component: backup
+                  timestamp: "${TIMESTAMP}"
+              spec:
+                volumeSnapshotClassName: git2in-snapshot
+                source:
+                  persistentVolumeClaimName: git2in-repository-pvc
+              EOF
+              
+              echo "Snapshot ${SNAPSHOT_NAME} created successfully"
+              
+              # Clean up old snapshots (keep last 7)
+              kubectl get volumesnapshot -n git2in \
+                -l app=git2in,component=backup \
+                --sort-by=.metadata.creationTimestamp \
+                -o name | head -n -7 | xargs -r kubectl delete -n git2in
+            
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 100m
+                memory: 128Mi
+          restartPolicy: OnFailure
+---
+# ServiceAccount for backup job
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: git2in-backup
+  namespace: git2in
+  labels:
+    app: git2in
+    component: backup
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: git2in-backup
+  namespace: git2in
+  labels:
+    app: git2in
+    component: backup
+rules:
+- apiGroups: ["snapshot.storage.k8s.io"]
+  resources: ["volumesnapshots"]
+  verbs: ["create", "get", "list", "delete"]
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: git2in-backup
+  namespace: git2in
+  labels:
+    app: git2in
+    component: backup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: git2in-backup
+subjects:
+- kind: ServiceAccount
+  name: git2in-backup
+  namespace: git2in

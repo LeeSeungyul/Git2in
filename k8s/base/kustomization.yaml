@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: git2in
+
+resources:
+  - namespace.yaml
+  - service-account.yaml
+  - configmap.yaml
+  - secret.yaml
+  - persistent-volume.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+
+commonLabels:
+  app: git2in
+  managed-by: kustomize
+
+images:
+  - name: git2in
+    newTag: latest

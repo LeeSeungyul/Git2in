@@ -1,28 +1,132 @@
 # Git2in
-Git Repository Server
 
-## What is Git2in?
+A self-hosted Git repository manager with HTTP Smart Protocol support, built with Python and FastAPI.
 
-Git2in is a lightweight Git server focused on delivering two foundational values:
-- **Accessible for all contributors**
-- **Forkable for every direction**
+## Features
 
-Built for projects that deserve simplicity without compromise,  
-Git2in helps you own your code, your way.
+- Git HTTP Smart Protocol proxy
+- Token-based authentication
+- Namespace and repository management
+- Domain-driven design architecture
+- Structured logging with correlation IDs
+- Comprehensive error handling
+- Prometheus metrics support
+- Audit logging
 
-The name stands for "**Git + Two In**" —  
-because it’s built with **two principles inside**, and ready for infinite outside uses.
+## Quick Start
 
----
+### Prerequisites
 
-## Git2in이란?
+- Python 3.11+
+- Git
+- Virtual environment (venv)
 
-Git2in은 두 가지 핵심 가치를 담은 경량 Git 서버입니다:
-- 누구나 기여할 수 있는 **접근성**
-- 어떤 방향으로든 자유롭게 포크할 수 있는 **확장성**
+### Installation
 
-복잡한 설정 없이도 프로젝트의 핵심 기능을 충실히 수행하며,  
-코드를 자유롭게 소유하고 관리할 수 있는 환경을 제공합니다.
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd Git2in
+```
 
-Git2in이라는 이름은 "**Git + Two In**"의 의미로,  
-**두 가지 원칙을 내장한 구조**에서 출발해, 다양한 사용 환경으로 확장될 수 있도록 설계되었습니다.
+2. Create and activate virtual environment:
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Copy environment configuration:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+5. Run the development server:
+```bash
+python run.py
+```
+
+The API will be available at `http://localhost:8000`
+
+## API Documentation
+
+- Interactive docs: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+- OpenAPI schema: `http://localhost:8000/openapi.json`
+
+## Project Structure
+
+```
+src/
+├── api/            # FastAPI routes and endpoints
+├── core/           # Domain models and business logic
+├── adapters/       # External service integrations
+├── ports/          # Interfaces and protocols
+├── infrastructure/ # Technical infrastructure
+│   ├── logging.py  # Structured logging setup
+│   └── middleware/ # HTTP middleware
+└── main.py         # Application entry point
+```
+
+## Configuration
+
+All configuration is managed through environment variables. See `.env.example` for available options.
+
+Key configurations:
+- `ENVIRONMENT`: Set to `development`, `staging`, or `production`
+- `LOG_LEVEL`: Logging verbosity (DEBUG, INFO, WARNING, ERROR)
+- `REPOSITORY_BASE_PATH`: Where Git repositories are stored
+- `SECRET_KEY`: Used for token signing (change in production!)
+
+## Development
+
+### Running Tests
+
+```bash
+pytest
+```
+
+### Code Formatting
+
+```bash
+black src tests
+```
+
+### Linting
+
+```bash
+pylint src
+mypy src
+```
+
+### Pre-commit Hooks
+
+```bash
+pre-commit install
+pre-commit run --all-files
+```
+
+## Docker
+
+Build the image:
+```bash
+docker build -t git2in .
+```
+
+Run with Docker Compose:
+```bash
+docker-compose up
+```
+
+## Contributing
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

@@ -1,0 +1,78 @@
+# Git files
+.git
+.gitignore
+.github
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+.eggs
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Test and coverage files
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.pylint.d/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Local data and logs
+logs/
+repositories/
+*.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Development files
+docker-compose.override.yml
+Makefile
+*.sh
+
+# Kubernetes and Helm files
+k8s/
+helm/
+charts/
+*.yaml
+*.yml
+!docker-compose.yml
+
+# Task management
+.taskmaster/
+.claude/
+.mcp.json
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup

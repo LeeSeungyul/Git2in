@@ -1,0 +1,49 @@
+# Development environment values
+replicaCount: 1
+
+image:
+  pullPolicy: Always
+  tag: "dev"
+
+ingress:
+  enabled: false  # Use port-forward for dev
+
+service:
+  type: NodePort
+  nodePort: 30080
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+persistence:
+  storageClass: "local-path"
+  size: 5Gi
+
+config:
+  env: development
+  logLevel: debug
+  workers: 2
+
+secrets:
+  secretKey: "dev-secret-key-not-for-production"
+  hmacKey: "dev-hmac-key-not-for-production"
+
+backup:
+  enabled: false
+
+monitoring:
+  enabled: false
+
+networkPolicy:
+  enabled: false
+
+podDisruptionBudget:
+  enabled: false
+
+autoscaling:
+  enabled: false

@@ -1,0 +1,24 @@
+apiVersion: v2
+name: git2in
+description: A Helm chart for Git2in - Git repository management system
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - git
+  - repository
+  - management
+home: https://github.com/example/git2in
+sources:
+  - https://github.com/example/git2in
+maintainers:
+  - name: Git2in Team
+    email: team@git2in.example.com
+icon: https://git2in.example.com/logo.png
+dependencies: []
+annotations:
+  artifacthub.io/category: "repository"
+  artifacthub.io/license: "MIT"
+  artifacthub.io/signKey: |
+    fingerprint: <fingerprint>
+    url: https://git2in.example.com/pgp-key.asc

@@ -1,0 +1,38 @@
+# docker-compose.override.yml.example
+# Copy this file to docker-compose.override.yml for local development customization
+# This file is automatically loaded by docker-compose and overrides settings in docker-compose.yml
+
+version: '3.8'
+
+services:
+  git2in-api:
+    # Mount local source code for hot-reload development
+    volumes:
+      - ./src:/app/src:rw
+      - ./tests:/app/tests:rw
+      - ./run.py:/app/run.py:rw
+      
+    # Development environment variables
+    environment:
+      - GIT2IN_DEBUG=true
+      - GIT2IN_LOG_LEVEL=debug
+      - GIT2IN_RELOAD=true
+      
+    # Use development command with auto-reload
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--log-level", "debug"]
+    
+    # Expose additional debug port
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # Python debugger port
+
+  # Disable services not needed for local development
+  nginx:
+    profiles:
+      - production
+  
+  # Use lighter postgres config for development
+  postgres:
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust  # No password for local dev
+    command: postgres -c shared_buffers=128MB -c max_connections=50

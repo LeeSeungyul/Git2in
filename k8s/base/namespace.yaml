@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: git2in
+  labels:
+    app: git2in
+    environment: base
+    managed-by: kubectl

@@ -1,0 +1,165 @@
+version: '3.8'
+
+services:
+  git2in-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: git2in-api
+    hostname: git2in-api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code for development hot-reload
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+      
+      # Persistent data volumes
+      - git2in-repos:/data/repositories
+      - git2in-logs:/data/logs
+      - git2in-config:/data/config
+      
+      # Mount local config if exists
+      - ./config:/app/config:ro
+    environment:
+      # Application settings
+      - GIT2IN_ENV=development
+      - GIT2IN_DEBUG=true
+      - GIT2IN_HOST=0.0.0.0
+      - GIT2IN_PORT=8000
+      - GIT2IN_WORKERS=2
+      
+      # Data paths
+      - GIT2IN_REPO_BASE_PATH=/data/repositories
+      - GIT2IN_LOG_DIR=/data/logs
+      - GIT2IN_CONFIG_DIR=/data/config
+      
+      # Logging
+      - GIT2IN_LOG_LEVEL=debug
+      - GIT2IN_LOG_FORMAT=json
+      
+      # Security (override in .env file)
+      - GIT2IN_SECRET_KEY=${GIT2IN_SECRET_KEY:-dev-secret-key-change-in-production}
+      - GIT2IN_HMAC_KEY=${GIT2IN_HMAC_KEY:-dev-hmac-key-change-in-production}
+      
+      # Redis connection (if using redis)
+      - GIT2IN_REDIS_URL=redis://redis:6379/0
+      
+      # Database connection (if using postgres)
+      - GIT2IN_DATABASE_URL=postgresql://git2in:git2in@postgres:5432/git2in
+    networks:
+      - git2in-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: git2in-redis
+    hostname: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - git2in-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: git2in-postgres
+    hostname: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      - POSTGRES_DB=git2in
+      - POSTGRES_USER=git2in
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-git2in-dev-password}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    networks:
+      - git2in-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U git2in -d git2in"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Nginx reverse proxy for production-like setup
+  nginx:
+    image: nginx:alpine
+    container_name: git2in-nginx
+    hostname: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx-cache:/var/cache/nginx
+    networks:
+      - git2in-network
+    depends_on:
+      - git2in-api
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+networks:
+  git2in-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+volumes:
+  git2in-repos:
+    driver: local
+  git2in-logs:
+    driver: local
+  git2in-config:
+    driver: local
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+  nginx-cache:
+    driver: local

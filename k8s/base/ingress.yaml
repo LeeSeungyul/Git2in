@@ -1,0 +1,181 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: git2in-ingress
+  namespace: git2in
+  labels:
+    app: git2in
+    component: ingress
+  annotations:
+    # Nginx specific annotations
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    nginx.ingress.kubernetes.io/limit-rpm: "1000"
+    
+    # Request size limits (important for Git push operations)
+    nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "8"
+    
+    # Timeouts for Git operations
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    
+    # CORS configuration
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+    
+    # TLS/SSL configuration
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.2 TLSv1.3"
+    nginx.ingress.kubernetes.io/ssl-ciphers: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256"
+    
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - git.example.com
+    secretName: git2in-tls
+  rules:
+  - host: git.example.com
+    http:
+      paths:
+      # API endpoints
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: git2in-api
+            port:
+              number: 8000
+      
+      # Git HTTP endpoints
+      - path: /git
+        pathType: Prefix
+        backend:
+          service:
+            name: git2in-api
+            port:
+              number: 8000
+      
+      # Health check endpoint
+      - path: /health
+        pathType: Exact
+        backend:
+          service:
+            name: git2in-api
+            port:
+              number: 8000
+      
+      # Metrics endpoint (consider restricting access)
+      - path: /metrics
+        pathType: Exact
+        backend:
+          service:
+            name: git2in-metrics
+            port:
+              number: 9090
+---
+# NetworkPolicy for network segmentation
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: git2in-network-policy
+  namespace: git2in
+  labels:
+    app: git2in
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: git2in
+      component: api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow traffic from Ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8000
+  
+  # Allow traffic from Prometheus for metrics
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    - podSelector:
+        matchLabels:
+          app: prometheus
+    ports:
+    - protocol: TCP
+      port: 9090
+  
+  # Allow pod-to-pod communication within namespace
+  - from:
+    - podSelector:
+        matchLabels:
+          app: git2in
+    ports:
+    - protocol: TCP
+      port: 8000
+  
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    - podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+  
+  # Allow external HTTPS for Git operations
+  - to:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+  
+  # Allow connection to Redis (if used)
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  
+  # Allow connection to PostgreSQL (if used)
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgresql
+    ports:
+    - protocol: TCP
+      port: 5432

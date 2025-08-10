@@ -1,0 +1,229 @@
+# Default values for git2in
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 3
+
+image:
+  repository: git2in
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8000
+  metricsPort: 9090
+  annotations: {}
+  sessionAffinity: ClientIP
+  sessionAffinityTimeout: 10800
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+  hosts:
+    - host: git.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: git2in-tls
+      hosts:
+        - git.example.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+    ephemeral-storage: 1Gi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+    ephemeral-storage: 100Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+persistence:
+  enabled: true
+  storageClass: "standard"
+  accessMode: ReadWriteMany
+  size: 10Gi
+  annotations: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app
+            operator: In
+            values:
+            - git2in
+        topologyKey: kubernetes.io/hostname
+
+# Application configuration
+config:
+  env: production
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  logLevel: info
+  logFormat: json
+  
+  repository:
+    basePath: /data/repositories
+    maxSize: 1073741824  # 1GB
+    allowedExtensions: .git
+  
+  rateLimit:
+    enabled: true
+    requests: 100
+    window: 60
+  
+  cors:
+    origins: "*"
+    methods: "GET,POST,PUT,DELETE,OPTIONS"
+    headers: "Content-Type,Authorization"
+  
+  features:
+    webhooks: true
+    auditLog: true
+    metrics: true
+
+# Secrets - These should be provided via sealed secrets or external secrets
+secrets:
+  secretKey: ""  # Override in environment-specific values
+  hmacKey: ""    # Override in environment-specific values
+  databaseUrl: ""
+  redisUrl: ""
+  oauthClientId: ""
+  oauthClientSecret: ""
+  webhookSecret: ""
+
+# Redis subchart configuration (if using Redis)
+redis:
+  enabled: false
+  architecture: standalone
+  auth:
+    enabled: true
+    password: "changeme"
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+# PostgreSQL subchart configuration (if using PostgreSQL)
+postgresql:
+  enabled: false
+  auth:
+    postgresPassword: "changeme"
+    database: git2in
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention: 7  # Keep last 7 backups
+  volumeSnapshotClassName: "git2in-snapshot"
+
+# Monitoring and observability
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    path: /metrics
+  
+# Network policies
+networkPolicy:
+  enabled: true
+  ingress:
+    from:
+      - namespaceSelector:
+          matchLabels:
+            name: ingress-nginx
+      - namespaceSelector:
+          matchLabels:
+            name: monitoring
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# Priority class
+priorityClassName: ""
+
+# Lifecycle hooks
+lifecycle: {}
+  # preStop:
+  #   exec:
+  #     command: ["/bin/sh", "-c", "sleep 15"]
+
+# Extra environment variables
+extraEnvVars: []
+  # - name: EXTRA_VAR
+  #   value: "extra_value"
+
+# Extra volumes
+extraVolumes: []
+  # - name: extra-volume
+  #   configMap:
+  #     name: extra-configmap
+
+# Extra volume mounts
+extraVolumeMounts: []
+  # - name: extra-volume
+  #   mountPath: /extra
+  #   readOnly: true
