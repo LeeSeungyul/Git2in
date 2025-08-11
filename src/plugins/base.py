@@ -2,13 +2,14 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
-from datetime import datetime
 
 
 class PluginPriority(Enum):
     """Plugin execution priority levels."""
+
     CRITICAL = 0  # Executed first, can block all operations
     HIGH = 10
     NORMAL = 50
@@ -18,6 +19,7 @@ class PluginPriority(Enum):
 
 class PluginStatus(Enum):
     """Plugin status for result tracking."""
+
     SUCCESS = "success"
     FAILURE = "failure"
     SKIPPED = "skipped"
@@ -28,6 +30,7 @@ class PluginStatus(Enum):
 @dataclass
 class PluginMetadata:
     """Plugin metadata information."""
+
     name: str
     version: str
     author: str
@@ -38,7 +41,7 @@ class PluginMetadata:
     dependencies: List[str] = field(default_factory=list)
     homepage: Optional[str] = None
     license: Optional[str] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert metadata to dictionary."""
         return {
@@ -58,6 +61,7 @@ class PluginMetadata:
 @dataclass
 class RepositoryInfo:
     """Repository information for plugin context."""
+
     namespace: str
     name: str
     path: str
@@ -72,6 +76,7 @@ class RepositoryInfo:
 @dataclass
 class UserInfo:
     """User information for plugin context."""
+
     id: str
     username: str
     email: str
@@ -84,6 +89,7 @@ class UserInfo:
 @dataclass
 class OperationData:
     """Operation-specific data for plugin context."""
+
     operation_type: str  # push, pull, receive, upload
     ref: Optional[str] = None  # Branch or tag reference
     old_sha: Optional[str] = None  # Previous commit SHA
@@ -97,6 +103,7 @@ class OperationData:
 @dataclass
 class PluginContext:
     """Context object passed to plugin methods."""
+
     repository: RepositoryInfo
     user: UserInfo
     operation: OperationData
@@ -104,7 +111,7 @@ class PluginContext:
     timestamp: datetime
     config: Dict[str, Any] = field(default_factory=dict)
     environment: Dict[str, str] = field(default_factory=dict)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert context to dictionary for serialization."""
         return {
@@ -146,14 +153,17 @@ class PluginContext:
 @dataclass
 class PluginResult:
     """Result returned by plugin execution."""
+
     status: PluginStatus
     allowed: bool = True
     message: Optional[str] = None
     data: Optional[Dict[str, Any]] = None
     execution_time_ms: Optional[float] = None
-    
+
     @classmethod
-    def success(cls, message: Optional[str] = None, data: Optional[Dict[str, Any]] = None) -> "PluginResult":
+    def success(
+        cls, message: Optional[str] = None, data: Optional[Dict[str, Any]] = None
+    ) -> "PluginResult":
         """Create a successful result."""
         return cls(
             status=PluginStatus.SUCCESS,
@@ -161,9 +171,11 @@ class PluginResult:
             message=message,
             data=data,
         )
-    
+
     @classmethod
-    def deny(cls, message: str, data: Optional[Dict[str, Any]] = None) -> "PluginResult":
+    def deny(
+        cls, message: str, data: Optional[Dict[str, Any]] = None
+    ) -> "PluginResult":
         """Create a denial result."""
         return cls(
             status=PluginStatus.FAILURE,
@@ -171,9 +183,11 @@ class PluginResult:
             message=message,
             data=data,
         )
-    
+
     @classmethod
-    def error(cls, message: str, data: Optional[Dict[str, Any]] = None) -> "PluginResult":
+    def error(
+        cls, message: str, data: Optional[Dict[str, Any]] = None
+    ) -> "PluginResult":
         """Create an error result."""
         return cls(
             status=PluginStatus.ERROR,
@@ -181,7 +195,7 @@ class PluginResult:
             message=message,
             data=data,
         )
-    
+
     @classmethod
     def skip(cls, message: Optional[str] = None) -> "PluginResult":
         """Create a skipped result."""
@@ -194,126 +208,126 @@ class PluginResult:
 
 class Plugin(ABC):
     """Abstract base class for all plugins."""
-    
+
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """
         Initialize plugin with configuration.
-        
+
         Args:
             config: Plugin-specific configuration
         """
         self.config = config or {}
         self._metadata: Optional[PluginMetadata] = None
-    
+
     @property
     @abstractmethod
     def metadata(self) -> PluginMetadata:
         """
         Return plugin metadata.
-        
+
         Returns:
             PluginMetadata object with plugin information
         """
         pass
-    
+
     async def initialize(self) -> None:
         """
         Initialize plugin resources.
-        
+
         Called once when the plugin is loaded. Override this method
         to perform any initialization tasks like connecting to databases,
         loading configuration files, etc.
         """
         pass
-    
+
     async def shutdown(self) -> None:
         """
         Clean up plugin resources.
-        
+
         Called when the plugin is being unloaded. Override this method
         to perform cleanup tasks like closing connections, saving state, etc.
         """
         pass
-    
+
     async def validate_config(self) -> bool:
         """
         Validate plugin configuration.
-        
+
         Returns:
             True if configuration is valid, False otherwise
         """
         return True
-    
+
     async def pre_receive(self, context: PluginContext) -> PluginResult:
         """
         Hook called before receiving Git objects.
-        
+
         This is called before any Git objects are received from the client.
         Use this to validate push permissions, check branch protection rules, etc.
-        
+
         Args:
             context: Plugin execution context
-            
+
         Returns:
             PluginResult indicating whether to allow the operation
         """
         return PluginResult.skip("pre_receive not implemented")
-    
+
     async def post_receive(self, context: PluginContext) -> PluginResult:
         """
         Hook called after receiving Git objects.
-        
+
         This is called after Git objects have been received and written to disk.
         Use this for notifications, CI/CD triggers, logging, etc.
-        
+
         Args:
             context: Plugin execution context
-            
+
         Returns:
             PluginResult with execution status
         """
         return PluginResult.skip("post_receive not implemented")
-    
+
     async def pre_upload(self, context: PluginContext) -> PluginResult:
         """
         Hook called before uploading Git objects.
-        
+
         This is called before sending Git objects to the client.
         Use this to validate pull permissions, implement rate limiting, etc.
-        
+
         Args:
             context: Plugin execution context
-            
+
         Returns:
             PluginResult indicating whether to allow the operation
         """
         return PluginResult.skip("pre_upload not implemented")
-    
+
     async def post_upload(self, context: PluginContext) -> PluginResult:
         """
         Hook called after uploading Git objects.
-        
+
         This is called after Git objects have been sent to the client.
         Use this for analytics, logging, bandwidth tracking, etc.
-        
+
         Args:
             context: Plugin execution context
-            
+
         Returns:
             PluginResult with execution status
         """
         return PluginResult.skip("post_upload not implemented")
-    
+
     async def custom_hook(self, hook_name: str, context: PluginContext) -> PluginResult:
         """
         Custom hook for non-standard operations.
-        
+
         This allows plugins to define custom hooks beyond the standard Git operations.
-        
+
         Args:
             hook_name: Name of the custom hook
             context: Plugin execution context
-            
+
         Returns:
             PluginResult with execution status
         """
@@ -322,31 +336,38 @@ class Plugin(ABC):
 
 # Exception classes for plugin errors
 
+
 class PluginError(Exception):
     """Base exception for plugin-related errors."""
+
     pass
 
 
 class PluginValidationError(PluginError):
     """Raised when plugin validation fails."""
+
     pass
 
 
 class PluginRuntimeError(PluginError):
     """Raised when plugin execution encounters an error."""
+
     pass
 
 
 class PluginTimeoutError(PluginError):
     """Raised when plugin execution times out."""
+
     pass
 
 
 class PluginConfigurationError(PluginError):
     """Raised when plugin configuration is invalid."""
+
     pass
 
 
 class PluginDependencyError(PluginError):
     """Raised when plugin dependencies are not met."""
+
     pass

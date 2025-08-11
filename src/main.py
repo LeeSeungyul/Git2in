@@ -1,34 +1,32 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
-from typing import Dict, Any
+from typing import Any, Dict
 
-from src.api.router import api_router
-from src.api import health
-from src.api import metrics_endpoint
-from src.api.v1.router import get_openapi_config
-from src.api.v1.middleware.rate_limit import limiter
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from src.core.config import settings
-from src.core.exceptions import BaseAPIException
-from src.infrastructure.logging import setup_logging, get_logger
-from src.infrastructure.middleware.logging import LoggingMiddleware
-from src.infrastructure.middleware.correlation import CorrelationIDMiddleware
-from src.infrastructure.middleware.metrics import MetricsMiddleware
-from src.api.exception_handlers import (
-    base_api_exception_handler,
-    validation_exception_handler,
-    http_exception_handler,
-    general_exception_handler
-)
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from src.api import health, metrics_endpoint
+from src.api.exception_handlers import (base_api_exception_handler,
+                                        general_exception_handler,
+                                        http_exception_handler,
+                                        validation_exception_handler)
+from src.api.router import api_router
+from src.api.v1.middleware.rate_limit import limiter
+from src.api.v1.router import get_openapi_config
 from src.core.auth.revocation import revocation_manager
 from src.core.auth.storage import token_storage
+from src.core.config import settings
+from src.core.exceptions import BaseAPIException
 from src.infrastructure.audit.logger import audit_logger
 from src.infrastructure.audit.rotation import audit_rotation_manager
+from src.infrastructure.logging import get_logger, setup_logging
+from src.infrastructure.middleware.correlation import CorrelationIDMiddleware
 from src.infrastructure.middleware.ip_filter import IPFilterMiddleware
+from src.infrastructure.middleware.logging import LoggingMiddleware
+from src.infrastructure.middleware.metrics import MetricsMiddleware
 
 logger = get_logger(__name__)
 
@@ -42,21 +40,21 @@ async def lifespan(app: FastAPI):
         environment=settings.environment,
         repository_base_path=str(settings.repository_base_path),
     )
-    
+
     # Start background cleanup tasks
     await revocation_manager.start_cleanup_task()
     await token_storage.start_cleanup_task()
     await audit_logger.start()
     await audit_rotation_manager.start()
-    
+
     yield
-    
+
     # Stop cleanup tasks on shutdown
     await revocation_manager.stop_cleanup_task()
     await token_storage.stop_cleanup_task()
     await audit_logger.stop()
     await audit_rotation_manager.stop()
-    
+
     logger.info("application_shutdown", app_name=settings.app_name)
 
 
@@ -70,7 +68,7 @@ app = FastAPI(
     contact=openapi_config.get("contact"),
     license_info=openapi_config.get("license"),
     servers=openapi_config.get("servers"),
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add rate limiter
@@ -108,8 +106,8 @@ async def root():
             "docs": "/docs",
             "redoc": "/redoc",
             "health": "/health",
-            "metrics": "/metrics"
-        }
+            "metrics": "/metrics",
+        },
     }
 
 

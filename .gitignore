@@ -75,3 +75,4 @@ repositories/
 
 #.md
 *.md
+!READEME.md

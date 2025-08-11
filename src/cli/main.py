@@ -69,17 +69,19 @@ def main(
     """
     # Initialize CLI context
     config_manager = ConfigManager(config_file)
-    formatter = OutputFormatter(output_format or config_manager.get("output_format", "table"))
-    
+    formatter = OutputFormatter(
+        output_format or config_manager.get("output_format", "table")
+    )
+
     cli_context = CLIContext(
         debug=debug,
         config=config_manager,
         formatter=formatter,
         console=console,
     )
-    
+
     ctx.obj = cli_context
-    
+
     if debug:
         console.print("[dim]Debug mode enabled[/dim]")
 
@@ -100,7 +102,7 @@ def config_command(
 ):
     """
     Manage configuration settings.
-    
+
     Examples:
         git2in config list
         git2in config get api_endpoint
@@ -108,25 +110,25 @@ def config_command(
     """
     cli_ctx: CLIContext = ctx.obj
     config = cli_ctx.config
-    
+
     if action == "list":
         table = Table(title="Configuration Settings")
         table.add_column("Key", style="cyan")
         table.add_column("Value", style="green")
-        
+
         for key, value in config.get_all().items():
             if key != "auth_token":  # Hide sensitive values
                 table.add_row(key, str(value))
             else:
                 table.add_row(key, "***" if value else "Not set")
-        
+
         console.print(table)
-    
+
     elif action == "get":
         if not key:
             console.print("[red]Error: Key is required for get action[/red]")
             raise typer.Exit(1)
-        
+
         value = config.get(key)
         if value is not None:
             if key == "auth_token":
@@ -135,18 +137,24 @@ def config_command(
                 console.print(value)
         else:
             console.print(f"[yellow]Configuration key '{key}' not found[/yellow]")
-    
+
     elif action == "set":
         if not key or value is None:
-            console.print("[red]Error: Both key and value are required for set action[/red]")
+            console.print(
+                "[red]Error: Both key and value are required for set action[/red]"
+            )
             raise typer.Exit(1)
-        
+
         config.set(key, value)
         config.save()
-        console.print(f"[green]✓[/green] Configuration updated: {key} = {'***' if key == 'auth_token' else value}")
-    
+        console.print(
+            f"[green]✓[/green] Configuration updated: {key} = {'***' if key == 'auth_token' else value}"
+        )
+
     else:
-        console.print(f"[red]Error: Unknown action '{action}'. Use: get, set, or list[/red]")
+        console.print(
+            f"[red]Error: Unknown action '{action}'. Use: get, set, or list[/red]"
+        )
         raise typer.Exit(1)
 
 
@@ -157,45 +165,50 @@ def doctor_command(ctx: typer.Context):
     """
     cli_ctx: CLIContext = ctx.obj
     console.print("[bold]Git2in CLI Doctor[/bold]\n")
-    
+
     # Check configuration
     console.print("📋 Configuration:")
     config_path = cli_ctx.config.config_path
     if config_path.exists():
         console.print(f"  [green]✓[/green] Configuration file found: {config_path}")
     else:
-        console.print(f"  [yellow]⚠[/yellow] Configuration file not found: {config_path}")
-    
+        console.print(
+            f"  [yellow]⚠[/yellow] Configuration file not found: {config_path}"
+        )
+
     # Check API endpoint
     api_endpoint = cli_ctx.config.get("api_endpoint")
     if api_endpoint:
         console.print(f"  [green]✓[/green] API endpoint configured: {api_endpoint}")
-        
+
         # Try to connect to API
         try:
             import httpx
+
             response = httpx.get(f"{api_endpoint}/health", timeout=5.0)
             if response.status_code == 200:
                 console.print(f"  [green]✓[/green] API is reachable")
             else:
-                console.print(f"  [red]✗[/red] API returned status {response.status_code}")
+                console.print(
+                    f"  [red]✗[/red] API returned status {response.status_code}"
+                )
         except Exception as e:
             console.print(f"  [red]✗[/red] Failed to connect to API: {e}")
     else:
         console.print("  [yellow]⚠[/yellow] API endpoint not configured")
-    
+
     # Check authentication
     auth_token = cli_ctx.config.get("auth_token")
     if auth_token:
         console.print("  [green]✓[/green] Authentication token configured")
     else:
         console.print("  [yellow]⚠[/yellow] Authentication token not configured")
-    
+
     # Check shell completion
     console.print("\n📝 Shell Completion:")
     console.print("  To install shell completion, run:")
     console.print("    [cyan]git2in --install-completion[/cyan]")
-    
+
     console.print("\n[bold]Summary:[/bold]")
     if api_endpoint and auth_token:
         console.print("  [green]✓[/green] CLI is properly configured")
@@ -218,26 +231,46 @@ def completion_command(
     if install:
         typer.echo("Installing shell completion...")
         import subprocess
+
         result = subprocess.run(
-            [sys.executable, "-m", "typer", "src.cli.main", "utils", "generate-completion", "install"],
+            [
+                sys.executable,
+                "-m",
+                "typer",
+                "src.cli.main",
+                "utils",
+                "generate-completion",
+                "install",
+            ],
             capture_output=True,
-            text=True
+            text=True,
         )
         if result.returncode == 0:
             console.print("[green]✓[/green] Shell completion installed successfully")
-            console.print("Please restart your shell or run: [cyan]source ~/.bashrc[/cyan]")
+            console.print(
+                "Please restart your shell or run: [cyan]source ~/.bashrc[/cyan]"
+            )
         else:
             console.print(f"[red]Error installing completion:[/red] {result.stderr}")
     else:
         # Show completion script
         if not shell:
             shell = "bash"
-        
+
         import subprocess
+
         result = subprocess.run(
-            [sys.executable, "-m", "typer", "src.cli.main", "utils", "generate-completion", shell],
+            [
+                sys.executable,
+                "-m",
+                "typer",
+                "src.cli.main",
+                "utils",
+                "generate-completion",
+                shell,
+            ],
             capture_output=True,
-            text=True
+            text=True,
         )
         if result.returncode == 0:
             console.print(result.stdout)

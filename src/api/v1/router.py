@@ -4,20 +4,14 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
-from src.api.v1.routes import (
-    namespaces_router,
-    repositories_router,
-    users_router,
-    tokens_router
-)
-from src.api.v1.middleware.rate_limit import (
-    limiter,
-    rate_limit_exceeded_handler
-)
+from src.api.v1.middleware.rate_limit import (limiter,
+                                              rate_limit_exceeded_handler)
+from src.api.v1.routes import (namespaces_router, repositories_router,
+                               tokens_router, users_router)
 
 # Create v1 API router with OpenAPI tags
 api_v1_router = APIRouter(
-    prefix="/v1",
+    prefix="",
     responses={
         400: {
             "description": "Bad Request",
@@ -27,10 +21,10 @@ api_v1_router = APIRouter(
                         "success": False,
                         "error": "BAD_REQUEST",
                         "message": "Invalid request parameters",
-                        "correlation_id": "abc123"
+                        "correlation_id": "abc123",
                     }
                 }
-            }
+            },
         },
         401: {
             "description": "Unauthorized",
@@ -40,10 +34,10 @@ api_v1_router = APIRouter(
                         "success": False,
                         "error": "UNAUTHORIZED",
                         "message": "Authentication required",
-                        "correlation_id": "abc123"
+                        "correlation_id": "abc123",
                     }
                 }
-            }
+            },
         },
         403: {
             "description": "Forbidden",
@@ -53,10 +47,10 @@ api_v1_router = APIRouter(
                         "success": False,
                         "error": "FORBIDDEN",
                         "message": "Access denied",
-                        "correlation_id": "abc123"
+                        "correlation_id": "abc123",
                     }
                 }
-            }
+            },
         },
         404: {
             "description": "Not Found",
@@ -66,10 +60,10 @@ api_v1_router = APIRouter(
                         "success": False,
                         "error": "NOT_FOUND",
                         "message": "Resource not found",
-                        "correlation_id": "abc123"
+                        "correlation_id": "abc123",
                     }
                 }
-            }
+            },
         },
         429: {
             "description": "Too Many Requests",
@@ -79,10 +73,10 @@ api_v1_router = APIRouter(
                         "success": False,
                         "error": "RATE_LIMIT_EXCEEDED",
                         "message": "Rate limit exceeded. Retry after 60 seconds",
-                        "correlation_id": "abc123"
+                        "correlation_id": "abc123",
                     }
                 }
-            }
+            },
         },
         500: {
             "description": "Internal Server Error",
@@ -92,12 +86,12 @@ api_v1_router = APIRouter(
                         "success": False,
                         "error": "INTERNAL_ERROR",
                         "message": "An internal error occurred",
-                        "correlation_id": "abc123"
+                        "correlation_id": "abc123",
                     }
                 }
-            }
-        }
-    }
+            },
+        },
+    },
 )
 
 # Include route modules
@@ -111,7 +105,7 @@ api_v1_router.include_router(tokens_router)
     "/",
     summary="API v1 Root",
     description="Get API v1 information and available endpoints",
-    tags=["api"]
+    tags=["api"],
 )
 async def api_v1_root():
     """Get API v1 information"""
@@ -123,17 +117,14 @@ async def api_v1_root():
             "repositories": "/api/v1/namespaces/{namespace}/repos",
             "users": "/api/v1/users",
             "tokens": "/api/v1/tokens",
-            "auth": "/api/v1/auth"
+            "auth": "/api/v1/auth",
         },
-        "documentation": {
-            "openapi": "/docs",
-            "redoc": "/redoc"
-        },
+        "documentation": {"openapi": "/docs", "redoc": "/redoc"},
         "rate_limits": {
             "default": "1000 requests per hour",
             "authenticated": "5000 requests per hour",
-            "description": "Rate limits are per user for authenticated requests, per IP for anonymous"
-        }
+            "description": "Rate limits are per user for authenticated requests, per IP for anonymous",
+        },
     }
 
 
@@ -143,11 +134,12 @@ def get_openapi_config():
     # Import settings locally to avoid circular imports
     try:
         from src.core.config import settings
+
         server_url = f"http://{settings.api_host}:{settings.api_port}"
     except Exception:
         # Fallback if settings fail to load
         server_url = "http://localhost:8000"
-    
+
     return {
         "title": "Git2in API",
         "description": """
@@ -220,48 +212,16 @@ The API is versioned via URL path. Current version: v1
 Future versions will be available at `/api/v2`, `/api/v3`, etc.
         """,
         "version": "1.0.0",
-        "contact": {
-            "name": "Git2in Support",
-            "email": "support@git2in.example.com"
-        },
-        "license": {
-            "name": "MIT",
-            "url": "https://opensource.org/licenses/MIT"
-        },
-        "servers": [
-            {
-                "url": server_url,
-                "description": "Local development server"
-            }
-        ],
+        "contact": {"name": "Git2in Support", "email": "support@git2in.example.com"},
+        "license": {"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
+        "servers": [{"url": server_url, "description": "Local development server"}],
         "tags": [
-            {
-                "name": "namespaces",
-                "description": "Namespace management operations"
-            },
-            {
-                "name": "repositories",
-                "description": "Repository management operations"
-            },
-            {
-                "name": "users",
-                "description": "User management operations"
-            },
-            {
-                "name": "tokens",
-                "description": "API token management operations"
-            },
-            {
-                "name": "authentication",
-                "description": "Authentication operations"
-            },
-            {
-                "name": "health",
-                "description": "Health check endpoints"
-            },
-            {
-                "name": "metrics",
-                "description": "Metrics and monitoring"
-            }
-        ]
+            {"name": "namespaces", "description": "Namespace management operations"},
+            {"name": "repositories", "description": "Repository management operations"},
+            {"name": "users", "description": "User management operations"},
+            {"name": "tokens", "description": "API token management operations"},
+            {"name": "authentication", "description": "Authentication operations"},
+            {"name": "health", "description": "Health check endpoints"},
+            {"name": "metrics", "description": "Metrics and monitoring"},
+        ],
     }
